@@ -5,12 +5,9 @@ set -euo pipefail
 #   ./setup            # bootstrap mode (default)
 #   ./setup install    # run installer from local checkout
 #   ./setup help       # show usage
-#
-# Optional:
-#   DOTFILES_REF=<branch-or-tag>
 
 BOOTSTRAP_REPO_URL="https://github.com/ZebaLive/illogical-impulse-dotfiles.git"
-BOOTSTRAP_REF="${DOTFILES_REF:-main}"
+BOOTSTRAP_BRANCH="main"
 BOOTSTRAP_CLONE_DIR="$HOME/illogical-impulse-dotfiles"
 
 if ! command -v pacman >/dev/null 2>&1; then
@@ -32,7 +29,9 @@ MODE="${1:-bootstrap}"
 usage() {
   cat <<'USAGE'
 Usage:
+  ./setup            Bootstrap repo to ~/illogical-impulse-dotfiles, then run install
   ./setup install    Run installer
+  ./setup help       Show this help
 USAGE
 }
 
@@ -63,7 +62,7 @@ run_bootstrap() {
 
   if [[ -d "$repo_dir/.git" ]]; then
     echo "Bootstrap repo already exists at $repo_dir"
-    echo "Pulling latest changes (ref: $BOOTSTRAP_REF)..."
+    echo "Pulling latest changes from main..."
 
     if git -C "$repo_dir" remote get-url origin >/dev/null 2>&1; then
       git -C "$repo_dir" remote set-url origin "$BOOTSTRAP_REPO_URL"
@@ -71,21 +70,25 @@ run_bootstrap() {
       git -C "$repo_dir" remote add origin "$BOOTSTRAP_REPO_URL"
     fi
 
-    git -C "$repo_dir" fetch --depth=1 origin "$BOOTSTRAP_REF"
-    if git -C "$repo_dir" show-ref --verify --quiet "refs/heads/$BOOTSTRAP_REF"; then
-      git -C "$repo_dir" checkout "$BOOTSTRAP_REF"
-    else
-      git -C "$repo_dir" checkout -B "$BOOTSTRAP_REF" "origin/$BOOTSTRAP_REF"
+    git -C "$repo_dir" fetch --depth=1 --prune origin "$BOOTSTRAP_BRANCH"
+    if ! git -C "$repo_dir" symbolic-ref -q HEAD >/dev/null 2>&1; then
+      echo "Detached HEAD detected. Reattaching to branch: $BOOTSTRAP_BRANCH"
     fi
-    git -C "$repo_dir" pull --ff-only origin "$BOOTSTRAP_REF"
+    if git -C "$repo_dir" show-ref --verify --quiet "refs/heads/$BOOTSTRAP_BRANCH"; then
+      git -C "$repo_dir" checkout "$BOOTSTRAP_BRANCH"
+    else
+      git -C "$repo_dir" checkout -b "$BOOTSTRAP_BRANCH" --track "origin/$BOOTSTRAP_BRANCH"
+    fi
+    git -C "$repo_dir" branch --set-upstream-to="origin/$BOOTSTRAP_BRANCH" "$BOOTSTRAP_BRANCH" >/dev/null 2>&1 || true
+    git -C "$repo_dir" pull --ff-only origin "$BOOTSTRAP_BRANCH"
   else
     if [[ -e "$repo_dir" ]]; then
       echo "Path exists but is not a git repo: $repo_dir" >&2
       echo "Please move/remove it, or run ./setup install from your local checkout." >&2
       exit 1
     fi
-    echo "Cloning $BOOTSTRAP_REPO_URL (ref: $BOOTSTRAP_REF) -> $repo_dir"
-    git clone --depth=1 --branch "$BOOTSTRAP_REF" "$BOOTSTRAP_REPO_URL" "$repo_dir"
+    echo "Cloning $BOOTSTRAP_REPO_URL (branch: $BOOTSTRAP_BRANCH) -> $repo_dir"
+    git clone --depth=1 --branch "$BOOTSTRAP_BRANCH" "$BOOTSTRAP_REPO_URL" "$repo_dir"
   fi
 
   if ! script_looks_like_repo_dir "$repo_dir"; then
