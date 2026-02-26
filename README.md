@@ -19,6 +19,7 @@ git clone https://github.com/ZebaLive/illogical-impulse-dotfiles
 cd ~/illogical-impulse-dotfiles
 ./setup install
 ```
+
 ## Notes
 
 - Script targets Arch Linux (`pacman` required).
