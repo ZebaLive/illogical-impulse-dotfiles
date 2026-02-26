@@ -62,9 +62,22 @@ run_bootstrap() {
   repo_dir="$BOOTSTRAP_CLONE_DIR"
 
   if [[ -d "$repo_dir/.git" ]]; then
-    echo "Updating bootstrap repo in $repo_dir"
-    git -C "$repo_dir" fetch --depth=1 "$BOOTSTRAP_REPO_URL" "$BOOTSTRAP_REF"
-    git -C "$repo_dir" checkout -f FETCH_HEAD
+    echo "Bootstrap repo already exists at $repo_dir"
+    echo "Pulling latest changes (ref: $BOOTSTRAP_REF)..."
+
+    if git -C "$repo_dir" remote get-url origin >/dev/null 2>&1; then
+      git -C "$repo_dir" remote set-url origin "$BOOTSTRAP_REPO_URL"
+    else
+      git -C "$repo_dir" remote add origin "$BOOTSTRAP_REPO_URL"
+    fi
+
+    git -C "$repo_dir" fetch --depth=1 origin "$BOOTSTRAP_REF"
+    if git -C "$repo_dir" show-ref --verify --quiet "refs/heads/$BOOTSTRAP_REF"; then
+      git -C "$repo_dir" checkout "$BOOTSTRAP_REF"
+    else
+      git -C "$repo_dir" checkout -B "$BOOTSTRAP_REF" "origin/$BOOTSTRAP_REF"
+    fi
+    git -C "$repo_dir" pull --ff-only origin "$BOOTSTRAP_REF"
   else
     if [[ -e "$repo_dir" ]]; then
       echo "Path exists but is not a git repo: $repo_dir" >&2
@@ -103,6 +116,7 @@ ensure_gum_installed() {
 RUN_BASE_HYPRLAND=false
 RUN_CUSTOM_DEPS=false
 RUN_STOW=false
+RUN_EXIT=false
 
 PACMAN_PACKAGES=(
   gum
@@ -342,34 +356,43 @@ stow_dotfiles_into_home() {
 configure_run_options() {
   local action
 
+  RUN_BASE_HYPRLAND=false
+  RUN_CUSTOM_DEPS=false
+  RUN_STOW=false
+  RUN_EXIT=false
+
   action="$(gum choose \
     --header "Select action" \
-    "install base hyprland config" \
-    "install custom dependencies" \
-    "stow custom config" \
-    "run all"
+    "Install base hyprland config" \
+    "Install custom dependencies" \
+    "Stow custom config" \
+    "Run all" \
+    "Exit"
   )"
 
   case "$action" in
-    "install base hyprland config")
+    "Install base hyprland config")
       RUN_BASE_HYPRLAND=true
       RUN_CUSTOM_DEPS=false
       RUN_STOW=false
       ;;
-    "install custom dependencies")
+    "Install custom dependencies")
       RUN_BASE_HYPRLAND=false
       RUN_CUSTOM_DEPS=true
       RUN_STOW=false
       ;;
-    "stow custom config")
+    "Stow custom config")
       RUN_BASE_HYPRLAND=false
       RUN_CUSTOM_DEPS=false
       RUN_STOW=true
       ;;
-    "run all")
+    "Run all")
       RUN_BASE_HYPRLAND=true
       RUN_CUSTOM_DEPS=true
       RUN_STOW=true
+      ;;
+    "Exit")
+      RUN_EXIT=true
       ;;
     *)
       echo "Unknown menu selection." >&2
@@ -394,33 +417,37 @@ print_plan() {
 run_install() {
   ensure_local_checkout
   ensure_gum_installed
-  configure_run_options
-  print_plan
 
-  if ! gum confirm "Run selected setup steps now?"; then
-    echo "Aborted."
-    exit 0
-  fi
+  while true; do
+    configure_run_options
 
-  if [[ "$RUN_BASE_HYPRLAND" == "true" ]]; then
-    install_hyprland_dotfiles
-  fi
+    if [[ "$RUN_EXIT" == "true" ]]; then
+      echo "Exiting setup."
+      break
+    fi
 
-  if [[ "$RUN_CUSTOM_DEPS" == "true" ]]; then
-    install_custom_dependencies
-  fi
+    print_plan
 
-  if [[ "$RUN_STOW" == "true" ]]; then
-    stow_dotfiles_into_home
-  fi
+    if ! gum confirm "Run selected setup steps now?"; then
+      echo "Skipped."
+      continue
+    fi
 
-  cat <<'EOM'
+    if [[ "$RUN_BASE_HYPRLAND" == "true" ]]; then
+      install_hyprland_dotfiles
+    fi
 
-Done.
+    if [[ "$RUN_CUSTOM_DEPS" == "true" ]]; then
+      install_custom_dependencies
+    fi
 
-Re-run setup anytime to open the menu again.
+    if [[ "$RUN_STOW" == "true" ]]; then
+      stow_dotfiles_into_home
+    fi
 
-EOM
+    echo "Done."
+    echo
+  done
 }
 
 if [[ "$#" -gt 1 ]]; then
