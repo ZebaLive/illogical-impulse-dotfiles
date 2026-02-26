@@ -1,0 +1,446 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Usage:
+#   ./setup            # bootstrap mode (default)
+#   ./setup install    # run installer from local checkout
+#   ./setup help       # show usage
+#
+# Optional:
+#   DOTFILES_REF=<branch-or-tag>
+
+BOOTSTRAP_REPO_URL="https://github.com/ZebaLive/illogical-impulse-dotfiles.git"
+BOOTSTRAP_REF="${DOTFILES_REF:-main}"
+BOOTSTRAP_CLONE_DIR="$HOME/illogical-impulse-dotfiles"
+
+if ! command -v pacman >/dev/null 2>&1; then
+  echo "This setup script is for Arch Linux (pacman not found)." >&2
+  exit 1
+fi
+
+if [[ "$EUID" -eq 0 ]]; then
+  PACMAN=(pacman)
+  ROOT_CMD=()
+else
+  PACMAN=(sudo pacman)
+  ROOT_CMD=(sudo)
+fi
+
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+MODE="${1:-bootstrap}"
+
+usage() {
+  cat <<'USAGE'
+Usage:
+  ./setup install    Run installer
+USAGE
+}
+
+script_looks_like_repo_dir() {
+  local dir="$1"
+  [[ -f "$dir/setup" && -d "$dir/.config" ]]
+}
+
+ensure_git_for_bootstrap() {
+  if command -v git >/dev/null 2>&1; then
+    return
+  fi
+
+  echo "git not found. Installing git for bootstrap..."
+  "${PACMAN[@]}" -S --needed --noconfirm git
+}
+
+run_bootstrap() {
+  local repo_dir
+
+  if script_looks_like_repo_dir "$SCRIPT_DIR"; then
+    exec bash "$SCRIPT_DIR/setup" install
+  fi
+
+  ensure_git_for_bootstrap
+
+  repo_dir="$BOOTSTRAP_CLONE_DIR"
+
+  if [[ -d "$repo_dir/.git" ]]; then
+    echo "Updating bootstrap repo in $repo_dir"
+    git -C "$repo_dir" fetch --depth=1 "$BOOTSTRAP_REPO_URL" "$BOOTSTRAP_REF"
+    git -C "$repo_dir" checkout -f FETCH_HEAD
+  else
+    if [[ -e "$repo_dir" ]]; then
+      echo "Path exists but is not a git repo: $repo_dir" >&2
+      echo "Please move/remove it, or run ./setup install from your local checkout." >&2
+      exit 1
+    fi
+    echo "Cloning $BOOTSTRAP_REPO_URL (ref: $BOOTSTRAP_REF) -> $repo_dir"
+    git clone --depth=1 --branch "$BOOTSTRAP_REF" "$BOOTSTRAP_REPO_URL" "$repo_dir"
+  fi
+
+  if ! script_looks_like_repo_dir "$repo_dir"; then
+    echo "Bootstrap clone is missing setup or .config." >&2
+    exit 1
+  fi
+
+  exec bash "$repo_dir/setup" install
+}
+
+ensure_local_checkout() {
+  if ! script_looks_like_repo_dir "$SCRIPT_DIR"; then
+    echo "setup install expects a local dotfiles checkout." >&2
+    echo "Run ./setup (bootstrap mode) if this is a remote/raw execution." >&2
+    exit 1
+  fi
+}
+
+ensure_gum_installed() {
+  if command -v gum >/dev/null 2>&1; then
+    return
+  fi
+
+  echo "gum not found. Installing gum first..."
+  "${PACMAN[@]}" -S --needed --noconfirm gum
+}
+
+RUN_BASE_HYPRLAND=false
+RUN_CUSTOM_DEPS=false
+RUN_STOW=false
+
+PACMAN_PACKAGES=(
+  gum
+  zsh
+  git
+  neovim
+  bat
+  eza
+  zoxide
+  thefuck
+  fzf
+  fd
+  stow
+  starship
+  bind
+  man-db
+  man-pages
+)
+
+install_pacman_packages() {
+  local missing=()
+  for pkg in "${PACMAN_PACKAGES[@]}"; do
+    if ! pacman -Qi "$pkg" >/dev/null 2>&1; then
+      missing+=("$pkg")
+    fi
+  done
+
+  if [[ "${#missing[@]}" -eq 0 ]]; then
+    echo "All pacman packages already installed."
+    return
+  fi
+
+  echo "Installing pacman packages: ${missing[*]}"
+  "${PACMAN[@]}" -S --needed --noconfirm "${missing[@]}"
+}
+
+install_git_repo() {
+  local repo_url="$1"
+  local target_dir="$2"
+
+  if [[ -d "$target_dir/.git" ]]; then
+    echo "Updating $target_dir"
+    git -C "$target_dir" pull --ff-only
+    return
+  fi
+
+  if [[ -e "$target_dir" ]]; then
+    echo "Skipping $target_dir (exists but is not a git repo)."
+    return
+  fi
+
+  echo "Cloning $repo_url -> $target_dir"
+  git clone --depth=1 "$repo_url" "$target_dir"
+}
+
+install_ohmyzsh_components() {
+  local zsh_dir zsh_custom
+
+  zsh_dir="${ZSH:-$HOME/.oh-my-zsh}"
+  zsh_custom="${ZSH_CUSTOM:-$zsh_dir/custom}"
+
+  install_git_repo "https://github.com/ohmyzsh/ohmyzsh.git" "$zsh_dir"
+  mkdir -p "$zsh_custom/plugins"
+
+  install_git_repo \
+    "https://github.com/zsh-users/zsh-autosuggestions" \
+    "$zsh_custom/plugins/zsh-autosuggestions"
+
+  install_git_repo \
+    "https://github.com/zdharma-continuum/fast-syntax-highlighting.git" \
+    "$zsh_custom/plugins/fast-syntax-highlighting"
+
+  install_git_repo \
+    "https://github.com/junegunn/fzf-git.sh.git" \
+    "$HOME/.fzf-git.sh"
+}
+
+install_hyprland_dotfiles() {
+  if ! command -v curl >/dev/null 2>&1; then
+    echo "curl is required to install Hyprland dotfiles." >&2
+    return 1
+  fi
+
+  echo "Running Hyprland dotfiles installer..."
+  bash <(curl -s https://ii.clsty.link/get)
+}
+
+reload_hyprland_if_possible() {
+  if ! command -v hyprctl >/dev/null 2>&1; then
+    echo "hyprctl not found, skipping Hyprland reload."
+    return 0
+  fi
+
+  if hyprctl reload >/dev/null 2>&1; then
+    echo "Hyprland config reloaded."
+  else
+    echo "Could not reload Hyprland (is a Hyprland session running?)."
+  fi
+}
+
+set_zsh_as_default_shell() {
+  local zsh_bin target_user current_shell current_default_shell
+
+  zsh_bin="$(command -v zsh || true)"
+  if [[ -z "$zsh_bin" ]]; then
+    zsh_bin="/usr/bin/zsh"
+  fi
+
+  if [[ ! -x "$zsh_bin" ]]; then
+    echo "Could not find an executable zsh binary at $zsh_bin." >&2
+    return 1
+  fi
+
+  target_user="${SUDO_USER:-$USER}"
+
+  if ! grep -qx "$zsh_bin" /etc/shells; then
+    echo "Adding $zsh_bin to /etc/shells"
+    echo "$zsh_bin" | "${ROOT_CMD[@]}" tee -a /etc/shells >/dev/null
+  fi
+
+  current_shell="$(getent passwd "$target_user" | cut -d: -f7)"
+  if [[ "$current_shell" != "$zsh_bin" ]]; then
+    echo "Setting login shell for $target_user -> $zsh_bin"
+    "${ROOT_CMD[@]}" usermod -s "$zsh_bin" "$target_user"
+  else
+    echo "Login shell for $target_user is already $zsh_bin"
+  fi
+
+  if command -v useradd >/dev/null 2>&1; then
+    current_default_shell="$(useradd -D | awk -F= '/^SHELL=/{print $2}')"
+    if [[ "$current_default_shell" != "$zsh_bin" ]]; then
+      echo "Setting default shell for new users -> $zsh_bin"
+      "${ROOT_CMD[@]}" useradd -D -s "$zsh_bin"
+    else
+      echo "Default shell for new users is already $zsh_bin"
+    fi
+  fi
+}
+
+install_custom_dependencies() {
+  install_pacman_packages
+  install_ohmyzsh_components
+  set_zsh_as_default_shell
+}
+
+stow_dotfiles_into_home() {
+  local -a conflicts=()
+
+  if ! command -v stow >/dev/null 2>&1; then
+    echo "stow not found. Installing stow first..."
+    "${PACMAN[@]}" -S --needed --noconfirm stow
+  fi
+
+  run_stow() {
+    local -a cmd=(
+      stow
+      "--target=$HOME"
+      --restow
+      "--ignore=^\\.git$"
+      "--ignore=\\.gitignore$"
+      "--ignore=^LICENSE$"
+      "--ignore=^README\\.md$"
+      "--ignore=^setup$"
+      .
+    )
+
+    (
+      cd "$SCRIPT_DIR"
+      "${cmd[@]}"
+    )
+  }
+
+  list_stow_conflicts() {
+    local src rel dst src_real dst_real
+
+    while IFS= read -r -d '' src; do
+      rel="${src#"$SCRIPT_DIR"/}"
+      case "$rel" in
+        ""|"."|.git|.git/*|.gitignore|*/.gitignore|LICENSE|README.md|setup) continue ;;
+      esac
+
+      dst="$HOME/$rel"
+
+      if [[ -d "$src" ]]; then
+        if [[ -e "$dst" || -L "$dst" ]] && [[ ! -d "$dst" ]]; then
+          printf '%s\n' "$dst"
+        fi
+        continue
+      fi
+
+      if [[ -e "$dst" || -L "$dst" ]]; then
+        if [[ -L "$dst" ]]; then
+          src_real="$(readlink -f "$src" 2>/dev/null || true)"
+          dst_real="$(readlink -f "$dst" 2>/dev/null || true)"
+          if [[ -n "$src_real" && "$src_real" == "$dst_real" ]]; then
+            continue
+          fi
+        fi
+        printf '%s\n' "$dst"
+      fi
+    done < <(
+      find "$SCRIPT_DIR" -mindepth 1 \
+        \( -path "$SCRIPT_DIR/.git" -o -path "$SCRIPT_DIR/.git/*" \) -prune \
+        -o -print0
+    )
+  }
+
+  mapfile -t conflicts < <(list_stow_conflicts | sort -u)
+
+  if [[ "${#conflicts[@]}" -gt 0 ]]; then
+    echo "Conflicting target paths:"
+    printf ' - %s\n' "${conflicts[@]}"
+    echo
+    printf '\033[31mWarning: overwrite will delete these paths permanently.\033[0m\n'
+    echo "Please back up files manually first if needed."
+
+    if ! gum confirm "Delete conflicting paths and proceed with stow?"; then
+      echo "Skipped stow."
+      return 0
+    fi
+
+    for dst in "${conflicts[@]}"; do
+      case "$dst" in
+        ""|"/"|"$HOME")
+          echo "Refusing to remove unsafe path: $dst" >&2
+          return 1
+          ;;
+      esac
+      rm -rf -- "$dst"
+    done
+  fi
+
+  run_stow
+  reload_hyprland_if_possible
+}
+
+configure_run_options() {
+  local action
+
+  action="$(gum choose \
+    --header "Select action" \
+    "install base hyprland config" \
+    "install custom dependencies" \
+    "stow custom config" \
+    "run all"
+  )"
+
+  case "$action" in
+    "install base hyprland config")
+      RUN_BASE_HYPRLAND=true
+      RUN_CUSTOM_DEPS=false
+      RUN_STOW=false
+      ;;
+    "install custom dependencies")
+      RUN_BASE_HYPRLAND=false
+      RUN_CUSTOM_DEPS=true
+      RUN_STOW=false
+      ;;
+    "stow custom config")
+      RUN_BASE_HYPRLAND=false
+      RUN_CUSTOM_DEPS=false
+      RUN_STOW=true
+      ;;
+    "run all")
+      RUN_BASE_HYPRLAND=true
+      RUN_CUSTOM_DEPS=true
+      RUN_STOW=true
+      ;;
+    *)
+      echo "Unknown menu selection." >&2
+      exit 1
+      ;;
+  esac
+}
+
+print_plan() {
+  echo "Selected plan:"
+  if [[ "$RUN_BASE_HYPRLAND" == "true" ]]; then
+    echo "- install base hyprland config"
+  fi
+  if [[ "$RUN_CUSTOM_DEPS" == "true" ]]; then
+    echo "- install custom dependencies"
+  fi
+  if [[ "$RUN_STOW" == "true" ]]; then
+    echo "- stow custom config"
+  fi
+}
+
+run_install() {
+  ensure_local_checkout
+  ensure_gum_installed
+  configure_run_options
+  print_plan
+
+  if ! gum confirm "Run selected setup steps now?"; then
+    echo "Aborted."
+    exit 0
+  fi
+
+  if [[ "$RUN_BASE_HYPRLAND" == "true" ]]; then
+    install_hyprland_dotfiles
+  fi
+
+  if [[ "$RUN_CUSTOM_DEPS" == "true" ]]; then
+    install_custom_dependencies
+  fi
+
+  if [[ "$RUN_STOW" == "true" ]]; then
+    stow_dotfiles_into_home
+  fi
+
+  cat <<'EOM'
+
+Done.
+
+Re-run setup anytime to open the menu again.
+
+EOM
+}
+
+if [[ "$#" -gt 1 ]]; then
+  usage
+  exit 1
+fi
+
+case "$MODE" in
+  bootstrap)
+    run_bootstrap
+    ;;
+  install)
+    run_install
+    ;;
+  help|-h|--help)
+    usage
+    ;;
+  *)
+    echo "Unknown subcommand: $MODE" >&2
+    usage
+    exit 1
+    ;;
+esac
