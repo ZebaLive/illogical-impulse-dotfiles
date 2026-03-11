@@ -8,7 +8,7 @@ This repo contains personal modifications on top of [`end-4/dots-hyprland`](http
 Bootstrap (default behavior):
 
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/ZebaLive/illogical-impulse-dotfiles/main/setup)
+bash <(curl -fsSL https://ii-dots.zeba.dev)
 ```
 
 Local install subcommand (from a local checkout):
