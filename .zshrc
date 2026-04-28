@@ -5,7 +5,7 @@ export PATH="$HOME/.local/bin:$PATH"
 export ZSH="$HOME/.oh-my-zsh"
 
 # Plugins
-plugins=(git fzf colored-man-pages zsh-autosuggestions fast-syntax-highlighting)
+plugins=(git colored-man-pages zsh-autosuggestions fast-syntax-highlighting)
 
 # Load Oh-My-Zsh if available
 if [ -f "$ZSH/oh-my-zsh.sh" ]; then
