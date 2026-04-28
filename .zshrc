@@ -21,11 +21,6 @@ alias clear="printf '\033[2J\033[3J\033[1;1H'"
 alias pamcan=pacman
 alias q='qs -c ii'
 
-# ===== ZOXIDE (better cd) =====
-if command -v zoxide &> /dev/null; then
-    eval "$(zoxide init --cmd cd zsh)"
-fi
-
 # thefuck alias
 if command -v thefuck &> /dev/null; then
     eval $(thefuck --alias)
@@ -88,4 +83,9 @@ fi
 # Initialize starship (this should be near the end)
 if command -v starship &> /dev/null; then
     eval "$(starship init zsh)"
+fi
+
+# ===== ZOXIDE (better cd) — must be last =====
+if command -v zoxide &> /dev/null; then
+    eval "$(zoxide init --cmd cd zsh)"
 fi
