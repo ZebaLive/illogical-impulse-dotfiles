@@ -89,3 +89,10 @@ fi
 if command -v zoxide &> /dev/null; then
     eval "$(zoxide init --cmd cd zsh)"
 fi
+
+# bun completions
+[ -s "/home/zeba/.bun/_bun" ] && source "/home/zeba/.bun/_bun"
+
+# bun
+export BUN_INSTALL="$HOME/.bun"
+export PATH="$BUN_INSTALL/bin:$PATH"
