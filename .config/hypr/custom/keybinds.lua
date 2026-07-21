@@ -13,6 +13,13 @@ hl.bind("SUPER + CTRL + S", hl.dsp.global("quickshell:regionScreenshot"),
     { description = "Screen snip + editor (swappy)" })
 hl.bind("SUPER + CTRL + S", hl.dsp.exec_cmd("grim -g \"$(slurp)\" - | swappy -f -"))
 
+-- Lock screen: try quickshell first, fall back to hyprlock
+hl.unbind("SUPER + L")
+hl.bind("SUPER + L", function()
+    hl.dispatch(hl.dsp.global("quickshell:lock"))
+    os.execute("pidof qs quickshell hyprlock || hyprlock &")
+end, { description = "Session: Lock" })
+
 -- Unbind Super+Q and rebind killactive to Super+Shift+Q
 hl.unbind("SUPER + Q")
 hl.bind("SUPER + SHIFT + Q", hl.dsp.window.close(), { description = "Close window" })

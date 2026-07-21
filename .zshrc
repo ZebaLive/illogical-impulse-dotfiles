@@ -4,6 +4,8 @@ export PATH="$HOME/.local/bin:$PATH"
 # Oh-My-Zsh configuration
 export ZSH="$HOME/.oh-my-zsh"
 
+export _ZO_DOCTOR=0
+
 # Plugins
 plugins=(git colored-man-pages zsh-autosuggestions fast-syntax-highlighting)
 
@@ -16,7 +18,7 @@ fi
 alias vim=nvim
 alias cat='bat --paging=never'
 alias pcat='bat -p'
-alias ls='eza --icons'
+alias ls='eza --icons=auto'
 alias clear="printf '\033[2J\033[3J\033[1;1H'"
 alias pamcan=pacman
 alias q='qs -c ii'
