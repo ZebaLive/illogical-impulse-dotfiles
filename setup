@@ -279,6 +279,7 @@ stow_dotfiles_into_home() {
       "--target=$HOME"
       --restow
       "--ignore=^\\.git$"
+      "--ignore=^\\.omc$"
       "--ignore=\\.gitignore$"
       "--ignore=^LICENSE$"
       "--ignore=^README\\.md$"
@@ -298,7 +299,7 @@ stow_dotfiles_into_home() {
     while IFS= read -r -d '' src; do
       rel="${src#"$SCRIPT_DIR"/}"
       case "$rel" in
-        ""|"."|.git|.git/*|.gitignore|*/.gitignore|LICENSE|README.md|setup) continue ;;
+        ""|"."|.git|.git/*|.omc|.omc/*|*/.omc|*/.omc/*|.gitignore|*/.gitignore|LICENSE|README.md|setup) continue ;;
       esac
 
       dst="$HOME/$rel"

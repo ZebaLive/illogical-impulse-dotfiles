@@ -6,8 +6,10 @@ export ZSH="$HOME/.oh-my-zsh"
 
 export _ZO_DOCTOR=0
 
+zstyle ':omz:plugins:eza' 'icons' yes
+
 # Plugins
-plugins=(git colored-man-pages zsh-autosuggestions fast-syntax-highlighting)
+plugins=(git colored-man-pages zsh-autosuggestions fast-syntax-highlighting eza)
 
 # Load Oh-My-Zsh if available
 if [ -f "$ZSH/oh-my-zsh.sh" ]; then
@@ -18,7 +20,6 @@ fi
 alias vim=nvim
 alias cat='bat --paging=never'
 alias pcat='bat -p'
-alias ls='eza --icons=auto'
 alias clear="printf '\033[2J\033[3J\033[1;1H'"
 alias pamcan=pacman
 alias q='qs -c ii'
