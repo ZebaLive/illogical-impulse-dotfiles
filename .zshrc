@@ -8,6 +8,7 @@ export _ZO_DOCTOR=0
 
 export GH_PAGER=cat
 
+export PATH="$HOME/.local/bin:$PATH"
 export PATH="$HOME/.cache/.bun/bin:$PATH"
 
 zstyle ':omz:plugins:eza' 'icons' yes
@@ -97,7 +98,7 @@ if command -v zoxide &> /dev/null; then
     eval "$(zoxide init --cmd cd zsh)"
 fi
 
-export PATH="$HOME/.local/bin:$PATH"
+
 
 # claude-profile: manage Claude Code configuration profiles
 . "${XDG_DATA_HOME:-$HOME/.local/share}/claude-profile/claude-profile.sh"
