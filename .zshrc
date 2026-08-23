@@ -6,6 +6,10 @@ export ZSH="$HOME/.oh-my-zsh"
 
 export _ZO_DOCTOR=0
 
+export GH_PAGER=cat
+
+export PATH="$HOME/.cache/.bun/bin:$PATH"
+
 zstyle ':omz:plugins:eza' 'icons' yes
 
 # Plugins
@@ -92,3 +96,10 @@ fi
 if command -v zoxide &> /dev/null; then
     eval "$(zoxide init --cmd cd zsh)"
 fi
+
+
+# Added by Antigravity CLI installer
+export PATH="/home/zeba/.local/bin:$PATH"
+
+# claude-profile: manage Claude Code configuration profiles
+. "${XDG_DATA_HOME:-$HOME/.local/share}/claude-profile/claude-profile.sh"
