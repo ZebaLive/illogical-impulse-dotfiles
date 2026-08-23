@@ -1,15 +1,14 @@
 # Path configuration
 export PATH="$HOME/.local/bin:$PATH"
 
+export PATH="$HOME/.cache/.bun/bin:$PATH"
+
 # Oh-My-Zsh configuration
 export ZSH="$HOME/.oh-my-zsh"
 
 export _ZO_DOCTOR=0
 
 export GH_PAGER=cat
-
-export PATH="$HOME/.local/bin:$PATH"
-export PATH="$HOME/.cache/.bun/bin:$PATH"
 
 zstyle ':omz:plugins:eza' 'icons' yes
 
