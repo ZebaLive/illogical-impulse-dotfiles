@@ -97,8 +97,6 @@ if command -v zoxide &> /dev/null; then
     eval "$(zoxide init --cmd cd zsh)"
 fi
 
-
-# Added by Antigravity CLI installer
 export PATH="/home/zeba/.local/bin:$PATH"
 
 # claude-profile: manage Claude Code configuration profiles
