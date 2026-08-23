@@ -97,7 +97,5 @@ if command -v zoxide &> /dev/null; then
     eval "$(zoxide init --cmd cd zsh)"
 fi
 
-
-
 # claude-profile: manage Claude Code configuration profiles
 . "${XDG_DATA_HOME:-$HOME/.local/share}/claude-profile/claude-profile.sh"
