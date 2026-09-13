@@ -98,4 +98,6 @@ if command -v zoxide &> /dev/null; then
 fi
 
 # claude-profile: manage Claude Code configuration profiles
-. "${XDG_DATA_HOME:-$HOME/.local/share}/claude-profile/claude-profile.sh"
+if [ -f "${XDG_DATA_HOME:-$HOME/.local/share}/claude-profile/claude-profile.sh" ]; then
+    . "${XDG_DATA_HOME:-$HOME/.local/share}/claude-profile/claude-profile.sh"
+fi
