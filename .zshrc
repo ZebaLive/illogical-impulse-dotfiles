@@ -10,6 +10,8 @@ export _ZO_DOCTOR=0
 
 export GH_PAGER=cat
 
+fpath=("/home/zeba/.local/share/zsh/site-functions" $fpath)
+
 zstyle ':omz:plugins:eza' 'icons' yes
 
 # Plugins
@@ -95,9 +97,4 @@ fi
 # ===== ZOXIDE (better cd) — must be last =====
 if command -v zoxide &> /dev/null; then
     eval "$(zoxide init --cmd cd zsh)"
-fi
-
-# claude-profile: manage Claude Code configuration profiles
-if [ -f "${XDG_DATA_HOME:-$HOME/.local/share}/claude-profile/claude-profile.sh" ]; then
-    . "${XDG_DATA_HOME:-$HOME/.local/share}/claude-profile/claude-profile.sh"
 fi
