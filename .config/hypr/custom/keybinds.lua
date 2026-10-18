@@ -39,3 +39,5 @@ for i, code in ipairs(keypad_codes) do
         hl.dispatch(hl.dsp.window.move({ workspace = workspace_in_group(i) }))
     end)
 end
+
+hl.bind("CTRL + SHIFT + 2", hl.dsp.global("com.t3tools.T3Code:capture-window"))
