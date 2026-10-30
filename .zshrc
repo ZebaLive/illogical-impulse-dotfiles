@@ -10,6 +10,9 @@ export _ZO_DOCTOR=0
 
 export GH_PAGER=cat
 
+# bun completions
+[ -s "/home/zeba/.bun/_bun" ] && source "/home/zeba/.bun/_bun"
+
 fpath=("/home/zeba/.local/share/zsh/site-functions" $fpath)
 
 zstyle ':omz:plugins:eza' 'icons' yes
